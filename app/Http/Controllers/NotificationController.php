@@ -8,54 +8,9 @@ use Illuminate\Support\Facades\DB;
 
 class NotificationController extends Controller
 {
-    public function index(Request $request)
-    {
-        $query = Notification::query();
-
-        // Filtros
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('service')) {
-            $query->where('service_name', $request->service);
-        }
-
-        if ($request->filled('priority')) {
-            $query->where('priority', $request->priority);
-        }
-
-        if ($request->filled('channel')) {
-            $query->where('channel', $request->channel);
-        }
-
-        if ($request->filled('search')) {
-            $query->where(function($q) use ($request) {
-                $q->where('recipient', 'like', "%{$request->search}%")
-                  ->orWhere('subject', 'like', "%{$request->search}%")
-                  ->orWhere('message', 'like', "%{$request->search}%");
-            });
-        }
-
-        $notifications = $query->latest()->paginate(20)->withQueryString();
-
-        // Obtener filtros únicos para los dropdowns
-        $services = Notification::distinct()->pluck('service_name')->filter();
-        $channels = Notification::distinct()->pluck('channel')->filter();
-
-        return view('notifications.index', compact('notifications', 'services', 'channels'));
-    }
-
-    public function show(Notification $notification)
-    {
-        return view('notifications.show', compact('notification'));
-    }
-
-    public function create()
-    {
-        return view('notifications.create');
-    }
-
+    /**
+     * Dashboard con estadísticas
+     */
     public function dashboard()
     {
         $stats = [
@@ -66,43 +21,129 @@ class NotificationController extends Controller
             'today' => Notification::whereDate('created_at', today())->count(),
         ];
 
-        // Notificaciones por servicio
+        // Por servicio (solo los que tienen service_name)
         $byService = Notification::select('service_name', DB::raw('count(*) as total'))
+            ->whereNotNull('service_name')
             ->groupBy('service_name')
             ->orderByDesc('total')
             ->limit(10)
             ->get();
 
-        // Notificaciones por canal
+        // Por canal
         $byChannel = Notification::select('channel', DB::raw('count(*) as total'))
             ->groupBy('channel')
-            ->get();
-
-        // Últimas 24 horas - agrupado por hora
-        $last24Hours = Notification::select(
-                DB::raw('DATE_FORMAT(created_at, "%H:00") as hour'),
-                DB::raw('count(*) as total')
-            )
-            ->where('created_at', '>=', now()->subDay())
-            ->groupBy('hour')
-            ->orderBy('hour')
+            ->orderByDesc('total')
             ->get();
 
         // Notificaciones recientes
-        $recentNotifications = Notification::latest()->limit(10)->get();
+        $recentNotifications = Notification::latest()
+            ->limit(10)
+            ->get();
 
-        return view('dashboard', compact('stats', 'byService', 'byChannel', 'last24Hours', 'recentNotifications'));
+        return view('dashboard', compact('stats', 'byService', 'byChannel', 'recentNotifications'));
     }
 
+    /**
+     * Lista de notificaciones con filtros
+     */
+    public function index(Request $request)
+    {
+        $query = Notification::query();
+
+        // Filtros
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('recipient', 'like', "%{$search}%")
+                  ->orWhere('subject', 'like', "%{$search}%")
+                  ->orWhere('message', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('service')) {
+            $query->where('service_name', $request->service);
+        }
+
+        if ($request->filled('channel')) {
+            $query->where('channel', $request->channel);
+        }
+
+        $notifications = $query->latest()->paginate(20);
+        
+        // Para los filtros
+        $services = Notification::whereNotNull('service_name')
+            ->distinct()
+            ->pluck('service_name');
+            
+        $channels = Notification::distinct()->pluck('channel');
+
+        return view('notifications.index', compact('notifications', 'services', 'channels'));
+    }
+
+    /**
+     * Mostrar formulario de creación
+     */
+    public function create()
+    {
+        return view('notifications.create');
+    }
+
+    /**
+     * Guardar nueva notificación
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'type' => 'required|string|in:email,sms,push,webhook',
+            'channel' => 'required|string|in:app,email,sms,push',
+            'recipient' => 'required|string',
+            'subject' => 'nullable|string|max:255',
+            'message' => 'required|string',
+            'priority' => 'nullable|string|in:low,normal,high,urgent',
+            'service_name' => 'nullable|string|max:255',
+            'reference_id' => 'nullable|string|max:255',
+            'data' => 'nullable|array',
+            'scheduled_at' => 'nullable|date',
+        ]);
+
+        $notification = Notification::create($validated);
+
+        return redirect()
+            ->route('notifications.show', $notification)
+            ->with('success', 'Notificación creada exitosamente');
+    }
+
+    /**
+     * Ver detalle de notificación
+     */
+    public function show(Notification $notification)
+    {
+        return view('notifications.show', compact('notification'));
+    }
+
+    /**
+     * Marcar como leída
+     */
     public function markAsRead(Notification $notification)
     {
         $notification->markAsRead();
+
         return back()->with('success', 'Notificación marcada como leída');
     }
 
+    /**
+     * Eliminar notificación
+     */
     public function destroy(Notification $notification)
     {
         $notification->delete();
-        return back()->with('success', 'Notificación eliminada');
+
+        return redirect()
+            ->route('notifications.index')
+            ->with('success', 'Notificación eliminada');
     }
 }
