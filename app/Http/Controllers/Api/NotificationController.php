@@ -7,10 +7,51 @@ use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
+/**
+ * @OA\Info(
+ *      version="1.0.0",
+ *      title="Notification API",
+ *      description="API for managing notifications",
+ *      @OA\Contact(
+ *          email="admin@example.com"
+ *      )
+ * )
+ */
 class NotificationController extends Controller
 {
     /**
-     * List notifications with filters.
+     * @OA\Get(
+     *      path="/api/v1/notifications",
+     *      operationId="getNotificationsList",
+     *      tags={"Notifications"},
+     *      summary="Get list of notifications",
+     *      description="Returns list of notifications",
+     *      @OA\Parameter(
+     *          name="recipient",
+     *          in="query",
+     *          description="Filter by recipient",
+     *          required=false,
+     *          @OA\Schema(type="string")
+     *      ),
+     *      @OA\Parameter(
+     *          name="service_name",
+     *          in="query",
+     *          description="Filter by service name",
+     *          required=false,
+     *          @OA\Schema(type="string")
+     *      ),
+     *      @OA\Parameter(
+     *          name="status",
+     *          in="query",
+     *          description="Filter by status",
+     *          required=false,
+     *          @OA\Schema(type="string")
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Successful operation",
+     *       )
+     * )
      */
     public function index(Request $request)
     {
@@ -32,7 +73,33 @@ class NotificationController extends Controller
     }
 
     /**
-     * Create a new notification.
+     * @OA\Post(
+     *      path="/api/v1/notifications",
+     *      operationId="storeNotification",
+     *      tags={"Notifications"},
+     *      summary="Store new notification",
+     *      description="Returns notification data",
+     *      @OA\RequestBody(
+     *          required=true,
+     *          @OA\JsonContent(
+     *              required={"type","channel","recipient","message"},
+     *              @OA\Property(property="type", type="string", example="email"),
+     *              @OA\Property(property="channel", type="string", example="email"),
+     *              @OA\Property(property="recipient", type="string", example="user@example.com"),
+     *              @OA\Property(property="subject", type="string", example="Hello"),
+     *              @OA\Property(property="message", type="string", example="World"),
+     *              @OA\Property(property="service_name", type="string", example="MyService"),
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response=201,
+     *          description="Successful operation",
+     *       ),
+     *      @OA\Response(
+     *          response=400,
+     *          description="Bad Request"
+     *      )
+     * )
      */
     public function store(Request $request)
     {
@@ -55,7 +122,30 @@ class NotificationController extends Controller
     }
 
     /**
-     * Display the specified notification.
+     * @OA\Get(
+     *      path="/api/v1/notifications/{id}",
+     *      operationId="getNotificationById",
+     *      tags={"Notifications"},
+     *      summary="Get notification information",
+     *      description="Returns notification data",
+     *      @OA\Parameter(
+     *          name="id",
+     *          description="Notification id",
+     *          required=true,
+     *          in="path",
+     *          @OA\Schema(
+     *              type="integer"
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Successful operation",
+     *       ),
+     *      @OA\Response(
+     *          response=404,
+     *          description="Resource Not Found"
+     *      )
+     * )
      */
     public function show(Notification $notification)
     {
@@ -63,7 +153,30 @@ class NotificationController extends Controller
     }
 
     /**
-     * Mark notification as read.
+     * @OA\Patch(
+     *      path="/api/v1/notifications/{id}/read",
+     *      operationId="markNotificationAsRead",
+     *      tags={"Notifications"},
+     *      summary="Mark notification as read",
+     *      description="Returns updated notification",
+     *      @OA\Parameter(
+     *          name="id",
+     *          description="Notification id",
+     *          required=true,
+     *          in="path",
+     *          @OA\Schema(
+     *              type="integer"
+     *          )
+     *      ),
+     *      @OA\Response(
+     *          response=200,
+     *          description="Successful operation",
+     *       ),
+     *      @OA\Response(
+     *          response=404,
+     *          description="Resource Not Found"
+     *      )
+     * )
      */
     public function markAsRead(Notification $notification)
     {
