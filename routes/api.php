@@ -9,8 +9,17 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::prefix('v1')->group(function () {
-    Route::get('/notifications', [NotificationController::class, 'index']);
-    Route::post('/notifications', [NotificationController::class, 'store']);
-    Route::get('/notifications/{notification}', [NotificationController::class, 'show']);
-    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
+    Route::post('/login', [\App\Http\Controllers\Api\AuthController::class, 'login']);
+
+    Route::get('/notifications', [NotificationController::class, 'index'])
+        ->middleware('permission:view_notifications');
+
+    Route::post('/notifications', [NotificationController::class, 'store'])
+        ->middleware('permission:create_notifications');
+
+    Route::get('/notifications/{notification}', [NotificationController::class, 'show'])
+        ->middleware('permission:view_notifications');
+
+    Route::patch('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])
+        ->middleware('permission:mark_notifications_read');
 });
